@@ -38,6 +38,9 @@ public final class SecureChatServer {
         SslContext sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey())
             .build();
 
+        System.out.println(ssc.certificate());
+        System.out.println(ssc.privateKey());
+
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {

@@ -71,12 +71,14 @@ public final class EchoServer {
              });
 
             // Start the server.
+            // ChannelFuture#sync(): Waits for this future until it is done.
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.
             f.channel().closeFuture().sync();
         } finally {
             // Shut down all event loops to terminate all threads.
+            // bossGroup是为NioServerSocketChannel服务的
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }

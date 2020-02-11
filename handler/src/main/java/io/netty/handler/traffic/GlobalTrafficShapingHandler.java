@@ -331,6 +331,7 @@ public class GlobalTrafficShapingHandler extends AbstractTrafficShapingHandler {
     void submitWrite(final ChannelHandlerContext ctx, final Object msg,
             final long size, final long writedelay, final long now,
             final ChannelPromise promise) {
+        // 步骤一：根据channel的hashCode从channelQueues中找出PerChannel
         Channel channel = ctx.channel();
         Integer key = channel.hashCode();
         PerChannel perChannel = channelQueues.get(key);
@@ -344,19 +345,27 @@ public class GlobalTrafficShapingHandler extends AbstractTrafficShapingHandler {
         boolean globalSizeExceeded = false;
         // write operations need synchronization
         synchronized (perChannel) {
+            // 步骤二：判断是否要delay，如果不需要且queue中无数据，直接发
+            // 如果queue中有数据，即使不需要等待，也要将数据入queue，保证顺序
             if (writedelay == 0 && perChannel.messagesQueue.isEmpty()) {
                 trafficCounter.bytesRealWriteFlowControl(size);
                 ctx.write(msg, promise);
                 perChannel.lastWriteTimestamp = now;
                 return;
             }
+
+            // 步骤三：预计delay事件过长，则最多等待15s
             if (delay > maxTime && now + delay - perChannel.lastWriteTimestamp > maxTime) {
                 delay = maxTime;
             }
+
+            // 步骤四：数据进入queue
             newToSend = new ToSend(delay + now, msg, size, promise);
             perChannel.messagesQueue.addLast(newToSend);
             perChannel.queueSize += size;
             queuesSize.addAndGet(size);
+
+            // 步骤五：判断是否queue的数据太多，如果是，设置写状态为不可写
             checkWriteSuspend(ctx, delay, perChannel.queueSize);
             if (queuesSize.get() > maxGlobalWriteSize) {
                 globalSizeExceeded = true;

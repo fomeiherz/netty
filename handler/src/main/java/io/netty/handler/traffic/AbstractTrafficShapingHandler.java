@@ -490,6 +490,7 @@ public abstract class AbstractTrafficShapingHandler extends ChannelDuplexHandler
                             + isHandlerActive(ctx));
                 }
                 if (config.isAutoRead() && isHandlerActive(ctx)) {
+                    // 移除“读”事件
                     config.setAutoRead(false);
                     channel.attr(READ_SUSPENDED).set(true);
                     // Create a Runnable to reactive the read if needed. If one was create before it will just be
@@ -500,6 +501,7 @@ public abstract class AbstractTrafficShapingHandler extends ChannelDuplexHandler
                         reopenTask = new ReopenReadTimerTask(ctx);
                         attr.set(reopenTask);
                     }
+                    // 定时执行reopenTask
                     ctx.executor().schedule(reopenTask, wait, TimeUnit.MILLISECONDS);
                     if (logger.isDebugEnabled()) {
                         logger.debug("Suspend final status => " + config.isAutoRead() + ':'
@@ -562,6 +564,7 @@ public abstract class AbstractTrafficShapingHandler extends ChannelDuplexHandler
             }
         }
         // to maintain order of write
+        // 注意这个地方delay是0，表示不等待
         submitWrite(ctx, msg, size, 0, now, promise);
     }
 

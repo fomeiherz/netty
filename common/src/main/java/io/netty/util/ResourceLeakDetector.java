@@ -297,6 +297,7 @@ public class ResourceLeakDetector<T> {
                 break;
             }
 
+            // 判断是否泄露
             if (!ref.dispose()) {
                 continue;
             }

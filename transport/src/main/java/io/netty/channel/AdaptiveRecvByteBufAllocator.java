@@ -116,8 +116,12 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
             super.lastBytesRead(bytes);
         }
 
+        /**
+         * 猜测下一次分配的空间
+         */
         @Override
         public int guess() {
+            //System.out.println(nextReceiveBufferSize);
             return nextReceiveBufferSize;
         }
 

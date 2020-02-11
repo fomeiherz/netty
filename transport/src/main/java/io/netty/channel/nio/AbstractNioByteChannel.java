@@ -97,7 +97,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
     protected class NioByteUnsafe extends AbstractNioUnsafe {
 
         private void closeOnRead(ChannelPipeline pipeline) {
+            // input关闭了吗？没有
             if (!isInputShutdown0()) {
+                // 是否开启半关？如果是，关闭读，触发事件
                 if (isAllowHalfClosure(config())) {
                     shutdownInput();
                     pipeline.fireUserEventTriggered(ChannelInputShutdownEvent.INSTANCE);
@@ -137,6 +139,7 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             }
             final ChannelPipeline pipeline = pipeline();
             final ByteBufAllocator allocator = config.getAllocator();
+            // 自适应数据大小的分配器
             final RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();
             allocHandle.reset(config);
 
@@ -144,7 +147,9 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
             boolean close = false;
             try {
                 do {
+                    // 尽可能分配合适大小guess
                     byteBuf = allocHandle.allocate(allocator);
+                    // 读并且记录读了多少，如果读满了，下次continue的话就直接扩容
                     allocHandle.lastBytesRead(doReadBytes(byteBuf));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read. release the buffer.
@@ -160,11 +165,15 @@ public abstract class AbstractNioByteChannel extends AbstractNioChannel {
 
                     allocHandle.incMessagesRead(1);
                     readPending = false;
+                    // pipeline上执行，业务逻辑处理
+                    // 每一次读都会进行一次处理，等到全部读完毕后触发pipeline.fireChannelReadComplete()
                     pipeline.fireChannelRead(byteBuf);
                     byteBuf = null;
                 } while (allocHandle.continueReading());
 
+                // 记录这次读事件总共读了多少数据，计算下次分配大小
                 allocHandle.readComplete();
+                // 完成本次读事件的处理
                 pipeline.fireChannelReadComplete();
 
                 if (close) {

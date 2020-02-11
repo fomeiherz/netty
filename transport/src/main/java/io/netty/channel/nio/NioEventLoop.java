@@ -573,6 +573,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     private void processSelectedKeys() {
         if (selectedKeys != null) {
+            // 不用JDK的selector.selectedKeys()，性能更好，垃圾回收更少
             processSelectedKeysOptimized();
         } else {
             processSelectedKeysPlain(selector.selectedKeys());
@@ -582,6 +583,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     @Override
     protected void cleanup() {
         try {
+            // 关闭Selector
             selector.close();
         } catch (IOException e) {
             logger.warn("Failed to close a selector.", e);
@@ -710,7 +712,11 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
+            // (readyOps = 16)表示SelectionKey.OP_ACCEPT
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
+                // OP_READ和OP_ACCEPT都复用这里的代码
+                // NioServerSocketChannel会跳到AbstractNioMessageChannel
+                // NioSocketChannel会跳到AbstractNioByteChannel
                 unsafe.read();
             }
         } catch (CancelledKeyException ignored) {
@@ -758,6 +764,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             }
         }
 
+        // 关闭所有的Channel
         for (AbstractNioChannel ch: channels) {
             ch.unsafe().close(ch.unsafe().voidPromise());
         }
